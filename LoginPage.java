@@ -1,10 +1,25 @@
 import javax.swing.*;
 import java.awt.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class LoginPage extends JFrame {
+
+    // --- JDBC CONSTANTS ---
+    private static final String DB_URL = "jdbc:postgresql://localhost:5432/postgres"; 
+    private static final String DB_USER = "postgres"; 
+    private static final String DB_PASSWORD = "myuser"; // <-- USE YOUR ACTUAL DB PASSWORD
+    // ----------------------
+
+    private JTextField emailField;
+    private JPasswordField passField;
+
     public LoginPage() {
         setTitle("Login - DIL SE");
-        setSize(AppConfig.WINDOW_WIDTH, AppConfig.WINDOW_HEIGHT);
+        setSize(450, 500); 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -22,35 +37,43 @@ public class LoginPage extends JFrame {
         topBackBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
         topBackBtn.addActionListener(e -> {
             dispose();
-            new IndexPage();
+            // Assuming IndexPage exists and you want to go back to it
+            // new IndexPage().setVisible(true); 
         });
 
         JLabel titleLabel = new JLabel("USER LOGIN", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Playfair Display", Font.BOLD, 36));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JTextField emailField = new JTextField();
-        emailField.setPreferredSize(new Dimension(300, 35)); // Wider field
-        JPasswordField passField = new JPasswordField();
-        passField.setPreferredSize(new Dimension(300, 35)); // Wider field
+        emailField = new JTextField();
+        emailField.setPreferredSize(new Dimension(300, 35));
+        passField = new JPasswordField();
+        passField.setPreferredSize(new Dimension(300, 35));
         styleField(emailField);
         styleField(passField);
 
         JButton login = createButton("Log In");
 
+        // --- UPDATED DATABASE LOGIN LOGIC (FIXED) ---
         login.addActionListener(e -> {
             String email = emailField.getText().trim();
-            String pw = new String(passField.getPassword());
-            if (email.equals("test@mail.com") && pw.equals("12345")) {
+            String password = new String(passField.getPassword());
+            
+            // Call modified method, which returns the user ID (0 if failed)
+            int userId = verifyLogin(email, password); 
+            
+            if (userId > 0) {
                 JOptionPane.showMessageDialog(this, "Login Successful!");
-                dispose(); // Close the LoginPage
-                new DashboardPage();
+                dispose(); 
+                // CRUCIAL FIX: Pass the retrieved userId and make the dashboard visible
+                new DashboardPage(userId).setVisible(true); 
             } else {
-                JOptionPane.showMessageDialog(this, "Invalid credentials!");
+                JOptionPane.showMessageDialog(this, "Invalid email or password.", "Login Failed", JOptionPane.ERROR_MESSAGE);
             }
         });
+        // --------------------------------------------
 
-        // Create a form panel for both fields
+        // Create a form panel for both fields (GridBagLayout remains the same)
         JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBackground(new Color(255, 247, 248));
         GridBagConstraints gbc = new GridBagConstraints();
@@ -87,11 +110,35 @@ public class LoginPage extends JFrame {
         add(mainPanel);
         setVisible(true);
     }
+    
+    private int verifyLogin(String email, String password) {
+        String SQL = "SELECT id, password_hash FROM users WHERE email = ?";
+        
+        try (
+            Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+            PreparedStatement pstmt = conn.prepareStatement(SQL)
+        ) {
+            pstmt.setString(1, email);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                String storedHash = rs.getString("password_hash");
+                
+                if (password.equals(storedHash)) { 
+                    return rs.getInt("id"); 
+                }
+            }
+            return 0;
+        } catch (SQLException ex) {
+            System.err.println("SQL Login Error: " + ex.getMessage());
+            JOptionPane.showMessageDialog(this, "A database connection error occurred. Check DB credentials.", "Connection Error", JOptionPane.ERROR_MESSAGE);
+            return 0;
+        }
+    }
 
     private void styleField(JTextField field) {
         field.setFont(new Font("Montserrat", Font.PLAIN, 16));
         field.setBorder(BorderFactory.createLineBorder(new Color(242, 198, 201), 2, true));
-        // Removed setMaximumSize to allow preferred size to take effect
     }
 
     private JButton createButton(String text) {

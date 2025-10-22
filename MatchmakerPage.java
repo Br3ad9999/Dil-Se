@@ -9,15 +9,28 @@ public class MatchmakerPage extends JFrame {
     private JPanel cardContainer;
     private JFrame previousPage;
     
+    // NEW FIELD TO STORE THE LOGGED-IN USER ID
+    private final int userId; 
+    
+    // Original 0-arg constructor (now defaults to test ID 1)
     public MatchmakerPage() {
-        this(null);
+        this(1, null); 
     }
+    
+    // Original JFrame-arg constructor (now defaults to test ID 1)
     public MatchmakerPage(JFrame previousPage) {
+        this(1, previousPage);
+    }
+    
+    // NEW PRIMARY CONSTRUCTOR that accepts the User ID
+    public MatchmakerPage(int userId, JFrame previousPage) {
+        this.userId = userId; // Store the ID
         this.previousPage = previousPage;
-        setTitle("Matchmaker - DIL SE");
+        
+        setTitle("Matchmaker - DIL SE (User: " + userId + ")");
         setSize(450, 600);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // Changed from EXIT_ON_CLOSE
         
         // Background gradient mimic using JPanel with override paintComponent
         JPanel background = new JPanel() {
@@ -43,8 +56,6 @@ public class MatchmakerPage extends JFrame {
         logo.setForeground(Color.white);
         navbar.add(logo, BorderLayout.WEST);
         
-        background.add(navbar, BorderLayout.NORTH);
-        
         // Card container (stacked cards)
         cardContainer = new JPanel(null);
         cardContainer.setPreferredSize(new Dimension(400, 450));
@@ -52,6 +63,7 @@ public class MatchmakerPage extends JFrame {
         background.add(cardContainer, BorderLayout.CENTER);
         
         // Create sample cards (replace details with real content as needed)
+        // Here, you would use this.userId to load real match data from PostgreSQL
         addCard("Alice", "https://via.placeholder.com/400x300.png?text=Alice");
         addCard("Bob", "https://via.placeholder.com/400x300.png?text=Bob");
         addCard("Charlie", "https://via.placeholder.com/400x300.png?text=Charlie");
@@ -95,20 +107,29 @@ public class MatchmakerPage extends JFrame {
         backBtn.addActionListener(e -> {
             dispose();
             if (previousPage != null) previousPage.setVisible(true);
-            else new DashboardPage();
+            // new DashboardPage(this.userId).setVisible(true); // If previousPage is null, go back to dashboard
         });
 
         // Add backBtn to the top of background panel
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.setOpaque(false);
         topPanel.add(backBtn, BorderLayout.WEST);
-        background.add(topPanel, BorderLayout.NORTH);
+        
+        // Combine topPanel (with backBtn) and original navbar elements
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setOpaque(false);
+        headerPanel.add(topPanel, BorderLayout.NORTH); // Put back button on top
+        headerPanel.add(navbar, BorderLayout.CENTER); // Put "Matchmaker" logo below
+        background.add(headerPanel, BorderLayout.NORTH);
+
 
         setContentPane(background);
-        pack();
+        // pack(); // Removed pack() to keep the initial set size
         setVisible(true);
     }
     
+    // ... (rest of the helper methods remain the same) ...
+
     private void addCard(String name, String imageUrl) {
         JPanel card = new JPanel();
         card.setLayout(new BorderLayout());
@@ -163,8 +184,9 @@ public class MatchmakerPage extends JFrame {
         current = (current + 1) % cards.size();
         showCard(current);
     }
-    
+
+    // Main method for testing
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(MatchmakerPage::new);
+        SwingUtilities.invokeLater(() -> new MatchmakerPage(1, null));
     }
 }

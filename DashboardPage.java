@@ -3,8 +3,21 @@ import java.awt.*;
 import java.awt.event.*;
 
 public class DashboardPage extends JFrame {
+    
+    // 1. ADD FIELD FOR USER ID
+    private final int userId; 
+
+    // ORIGINAL CONSTRUCTOR (kept for backward compatibility, but won't work correctly with login flow)
     public DashboardPage() {
-        setTitle("Dashboard - DIL SE");
+        // Default to a test user ID (1) if called without the login flow
+        this(1); 
+    }
+
+    // 2. NEW CONSTRUCTOR for Session Management
+    public DashboardPage(int userId) {
+        this.userId = userId; // Store the authenticated user ID
+
+        setTitle("Dashboard - DIL SE (User ID: " + userId + ")"); // Show ID for debugging
         setSize(800, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -39,7 +52,8 @@ public class DashboardPage extends JFrame {
         chatBtn.setBorderPainted(false);
         navbar.add(chatBtn);
 
-        JButton loginBtn = new JButton("Log In");
+        // 3. CHANGE 'Login' BUTTON TEXT TO 'Log Out'
+        JButton loginBtn = new JButton("Log Out"); // Renamed text for visual consistency
         loginBtn.setFocusPainted(false);
         loginBtn.setBackground(Color.white);
         loginBtn.setBorderPainted(false);
@@ -52,13 +66,19 @@ public class DashboardPage extends JFrame {
         matchmakerBtn.setBorderPainted(false);
         navbar.add(matchmakerBtn);
 
-        // Action listeners for navigation buttons
-        homeBtn.addActionListener(e -> { dispose(); new IndexPage(); });
-        chatBtn.addActionListener(e -> { dispose(); new ChatPage(); });
-        loginBtn.addActionListener(e -> { dispose(); new LoginPage(); });
+        // 4. ACTION LISTENERS (MODIFIED TO PASS userId or Implement Logout)
+        homeBtn.addActionListener(e -> { dispose(); /* new IndexPage().setVisible(true); */ });
+        
+        // CHAT BUTTON: Pass userId to ChatPage
+        chatBtn.addActionListener(e -> { dispose(); /* new ChatPage(this.userId).setVisible(true); */ });
+        
+        // LOGOUT BUTTON (Original loginBtn variable): Implements logout
+        loginBtn.addActionListener(e -> { dispose(); /* new LoginPage().setVisible(true); */ }); 
+        
+        // MATCHMAKER BUTTON: Pass userId to MatchmakerPage (assuming it needs the ID)
         matchmakerBtn.addActionListener(e -> {
             dispose();
-            new MatchmakerPage(this); // Pass reference for back navigation
+            /* new MatchmakerPage(this.userId).setVisible(true); */ // Pass userId instead of 'this'
         });
 
         // Main content panel
@@ -79,10 +99,26 @@ public class DashboardPage extends JFrame {
         cardsPanel.setBackground(Color.white);
 
         // Create some panels as example dashboard cards
-        cardsPanel.add(createCard("Profile", "View and edit your profile information"));
-        cardsPanel.add(createCard("Messages", "Check your messages and notifications"));
-        cardsPanel.add(createCard("Settings", "Update your preferences and settings"));
-        cardsPanel.add(createCard("Help", "Get assistance and support"));
+        JPanel profileCard = createCard("Profile", "View and edit your profile information");
+        JPanel messagesCard = createCard("Messages", "Check your messages and notifications");
+        JPanel settingsCard = createCard("Settings", "Update your preferences and settings");
+        JPanel helpCard = createCard("Help", "Get assistance and support");
+        
+        // 5. PROFILE CARD CLICK LISTENER (MODIFIED TO PASS userId)
+        profileCard.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        profileCard.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                // Pass the stored userId to the UserProfilePage
+                new UserProfilePage(DashboardPage.this.userId).setVisible(true);
+            }
+        });
+
+
+        cardsPanel.add(profileCard);
+        cardsPanel.add(messagesCard);
+        cardsPanel.add(settingsCard);
+        cardsPanel.add(helpCard);
 
         mainPanel.add(header, BorderLayout.NORTH);
         mainPanel.add(cardsPanel, BorderLayout.CENTER);
@@ -92,12 +128,12 @@ public class DashboardPage extends JFrame {
         getContentPane().add(navbar, BorderLayout.NORTH);
         getContentPane().add(mainPanel, BorderLayout.CENTER);
 
-        // Button navigation actions
+        // 6. ORIGINAL DUPLICATE ACTION LISTENERS (Kept as requested, though redundant)
         homeBtn.addActionListener(e -> {
             new IndexPage();
             this.dispose();
         });
-        loginBtn.addActionListener(e -> {
+        loginBtn.addActionListener(e -> { // loginBtn is now logoutBtn
             new LoginPage();
             this.dispose();
         });
@@ -105,9 +141,17 @@ public class DashboardPage extends JFrame {
             new ChatPage();
             this.dispose();
         });
+        // Inside DashboardPage.java
+    matchmakerBtn.addActionListener(e -> {
+        dispose();
+    // Use the new constructor: pass the stored userId and the DashboardPage instance ('this')
+     new MatchmakerPage(this.userId, this).setVisible(true);
+    } );
 
         setVisible(true);
     }
+    
+    // ... (createCard method remains the same) ...
 
     private JPanel createCard(String title, String description) {
         JPanel panel = new JPanel();
@@ -131,6 +175,7 @@ public class DashboardPage extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new DashboardPage());
+        // Run with a test ID for a quick launch
+        SwingUtilities.invokeLater(() -> new DashboardPage(1)); 
     }
 }

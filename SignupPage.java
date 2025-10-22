@@ -1,7 +1,18 @@
 import javax.swing.*;
 import java.awt.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 public class SignupPage extends JFrame {
+
+    // --- JDBC CONSTANTS ---
+    // **MUST BE UPDATED FOR YOUR ENVIRONMENT**
+    private static final String DB_URL = "jdbc:postgresql://localhost:5432/postgres"; 
+    private static final String DB_USER = "postgres"; // Your PostgreSQL username
+    private static final String DB_PASSWORD = "myuser"; // Your PostgreSQL password
+    // ----------------------
 
     private JTextField usernameField;
     private JTextField emailField;
@@ -71,11 +82,31 @@ public class SignupPage extends JFrame {
         signupBtn.setBorder(BorderFactory.createEmptyBorder(10, 18, 10, 18));
         signupBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         signupBtn.setFocusPainted(false);
+        
+        // --- DATABASE SIGNUP LOGIC ---
         signupBtn.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Account created successfully!");
-            dispose();
-            new LoginPage();
+            String username = usernameField.getText().trim();
+            String email = emailField.getText().trim();
+            String password = new String(passwordField.getPassword());
+            String confirmPassword = new String(confirmPasswordField.getPassword());
+
+            if (username.isEmpty() || email.isEmpty() || password.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "All fields are required.", "Input Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (!password.equals(confirmPassword)) {
+                JOptionPane.showMessageDialog(this, "Passwords do not match.", "Input Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            if (registerUser(username, email, password)) {
+                JOptionPane.showMessageDialog(this, "Account created successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                dispose();
+                new LoginPage();
+            }
         });
+        // -----------------------------
+        
         outerPanel.add(Box.createVerticalStrut(20));
         outerPanel.add(signupBtn);
 
@@ -98,6 +129,38 @@ public class SignupPage extends JFrame {
 
         add(outerPanel);
         setVisible(true);
+    }
+
+    /**
+     * Attempts to register the user by inserting a new record into the database.
+     * @return true if the registration was successful, false otherwise.
+     */
+    private boolean registerUser(String username, String email, String password) {
+        String SQL = "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)";
+
+        // IMPORTANT SECURITY NOTE: Use a proper hashing library (like BCrypt) here!
+        String passwordHash = password; // PLACEHOLDER: Should be a hashed password
+
+        try (
+            Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+            PreparedStatement pstmt = conn.prepareStatement(SQL)
+        ) {
+            pstmt.setString(1, username);
+            pstmt.setString(2, email);
+            pstmt.setString(3, passwordHash); 
+            
+            int rowsAffected = pstmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException ex) {
+            System.err.println("SQL Registration Error: " + ex.getMessage());
+            // Check for unique constraint violation (e.g., username/email already taken)
+            if (ex.getSQLState().startsWith("23")) { // SQLState for Integrity Constraint Violation
+                JOptionPane.showMessageDialog(this, "Registration Failed. Username or Email may already be in use.", "Database Error", JOptionPane.ERROR_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "A database error occurred during registration.", "Database Error", JOptionPane.ERROR_MESSAGE);
+            }
+            return false;
+        }
     }
 
     // Helper to add a field to a parent panel
